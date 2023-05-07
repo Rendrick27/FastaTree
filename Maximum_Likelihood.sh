@@ -1,42 +1,35 @@
 #!/bin/bash
 
-# PhyloBuilder - A tool for building phylogenetic trees
+# Ask user for the name of the fasta file
+read -p "Enter the name of the fasta file: " fasta_file
 
-# Ask the user for the name of the FASTA file
-read -p "Enter the name of the FASTA file: " fasta_file
+#Will align the fasta file
+mafft --auto "$fasta_file" --reorder > "$fasta_file"_Alg.fasta
 
-# Run ModelTest-NG to determine the best-fit model of evolution
-model=$(modeltest-ng -i "$fasta_file" -d nt -p 2 -T raxml -o "${fasta_file}_modeltest_output.txt" | grep "Best model:" | cut -d ' ' -f 3)
+# Run modeltest-ng with default settings
+modeltest-ng -i "$fasta_file"_Alg -d nt -p 2 -T raxml -o "$fasta_file"_modeltest_output.txt
 
-# Display the recommended model to the user
-echo "The recommended model of evolution is: $model"
+# Ask user for the model name
+read -p "Enter the name of the model you want to use: " model_name
 
-# Ask the user if they want to use the recommended model or specify their own
-read -p "Do you want to use the recommended model (Y/n)? " use_recommended_model
-
-if [[ $use_recommended_model == "n" || $use_recommended_model == "N" ]]; then
-  # Ask the user for the name of the model they want to use
-  read -p "Enter the name of the model you want to use: " model
-fi
-
-# Run RAxML-NG to build the phylogenetic tree
-for i in {1..4}; do
-  raxml-ng --msa "$fasta_file" --model "$model" --prefix T${i} --threads 1 --seed $((1234+$i*1111)) --tree pars{$((25*i))},rand{$((25*i))} 
-done
+# Run raxml-ng with the specified model and parameters
+raxml-ng --msa "$fasta_file"_Alg --model "$model_name" --prefix T1 --threads 1 --seed 1234 --tree pars{25},rand{25}
+raxml-ng --msa "$fasta_file"_Alg --model "$model_name" --prefix T2 --threads 1 --seed 5678 --tree pars{50},rand{50}
+raxml-ng --msa "$fasta_file"_Alg --model "$model_name" --prefix T3 --threads 1 --seed 9999 --tree pars{75},rand{75}
+raxml-ng --msa "$fasta_file"_Alg --model "$model_name" --prefix T4 --threads 1 --seed 24680 --tree pars{100},rand{100}
 
 # Combine the final log likelihood values from the previous step
 grep "Final LogLikelihood:" T{1,2,3,4}.raxml.log > Final_LogLikelihood_"$fasta_file".txt
 
-# Run RAxML-NG with bootstrap option
-for i in {5..6}; do
-  raxml-ng --bootstrap --msa "$fasta_file" --model "$model" --prefix T${i} --seed $((111111*$i)) --threads 1 --bs-trees 5000
-done
+# Run raxml-ng with bootstrap option
+raxml-ng --bootstrap --msa "$fasta_file"_Alg --model "$model_name" --prefix T5 --seed 314159 --threads 1 --bs-trees 5000
+raxml-ng --bootstrap --msa "$fasta_file"_Alg --model "$model_name" --prefix T6 --seed 777777 --threads 1 --bs-trees 5000
 
 # Combine all bootstraps
 cat T5.raxml.bootstraps T6.raxml.bootstraps > allbootstraps
 
-# Run RAxML-NG with bsconverge option
+# Run raxml-ng with bsconverge option
 raxml-ng --bsconverge --bs-trees allbootstraps --prefix T7 --seed 2023 --threads 1 --bs-cutoff 0.03
 
-# Run RAxML-NG to build the final tree with bootstrapping
-raxml-ng --all --msa "$fasta_file" --model "$model" --prefix T8 --seed 27 --threads 1 --bs-metric fbp,tbe
+# Run raxml-ng 
+raxml-ng --all --msa "$fasta_file"_Alg --model "$model_name" --prefix T8 --seed 27 --threads 1 --bs-metric fbp,tbe
