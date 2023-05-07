@@ -16,6 +16,8 @@ RAxML-NG (version 1.0.2 or later)
 To run PhyloPipeline, simply execute the PhyloPipeline.sh script and follow the prompts:
 
 `bash Maximum_Likelihood.sh`
+or
+`bash Maximum_Parsimony.sh`
 
 The script will ask you to provide the name of a fasta file containing nucleotide sequences, and then guide you through the process of selecting a nucleotide substitution model and conducting bootstrap analyses. The final output will be a maximum likelihood tree based on the input sequences, as well as various log files and bootstrap files generated during the analysis.
 
